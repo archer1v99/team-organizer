@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>منظّم الفريق</title>
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --green: #16a34a;
+    --red: #dc2626;
+    --border: #e5e7eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: #fff;
+    padding: 24px 16px 0;
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  header p { margin: 0 0 16px; opacity: .85; }
+  nav { display: flex; gap: 8px; flex-wrap: wrap; }
+  nav button {
+    background: transparent;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 10px 10px 0 0;
+    font-family: inherit;
+  }
+  nav button.active { background: var(--bg); color: var(--primary); font-weight: bold; }
+  main { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
+  section { display: none; }
+  section.active { display: block; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat { background: var(--card); border-radius: 14px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .stat .num { font-size: 2rem; font-weight: bold; color: var(--primary); }
+  .stat .label { color: var(--muted); }
+
+  .card { background: var(--card); border-radius: 14px; padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .card h2, .card h3 { margin-top: 0; }
+
+  form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  form .full { grid-column: 1 / -1; }
+  label { display: block; font-size: .9rem; color: var(--muted); margin-bottom: 4px; }
+  input, textarea, select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    background: #fff;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--primary); border-color: transparent; }
+
+  .btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  .btn:hover { background: var(--primary-dark); }
+  .btn.small { padding: 6px 12px; font-size: .85rem; }
+  .btn.danger { background: var(--red); }
+  .btn.ghost { background: #eef2ff; color: var(--primary); }
+
+  .item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .item.done .title { text-decoration: line-through; color: var(--muted); }
+  .title { font-weight: bold; font-size: 1.05rem; }
+  .meta { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+  .actions { display: flex; gap: 6px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; background: #eef2ff; color: var(--primary); margin-inline-start: 6px; }
+  .badge.today { background: #fef3c7; color: #b45309; }
+  .badge.past { background: #fee2e2; color: var(--red); }
+  .badge.status-done { background: #dcfce7; color: var(--green); }
+
+  .progress { height: 8px; background: var(--border); border-radius: 999px; overflow: hidden; margin: 10px 0 4px; }
+  .progress > div { height: 100%; background: var(--green); transition: width .3s; }
+
+  .tasks { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .task { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .task input[type=checkbox] { width: auto; }
+  .task.done span { text-decoration: line-through; color: var(--muted); }
+  .task .x { margin-inline-start: auto; background: none; border: none; color: var(--red); cursor: pointer; font-size: 1.1rem; }
+  .task-form { display: flex; gap: 8px; margin-top: 8px; }
+  .task-form input { flex: 1; }
+
+  .empty { text-align: center; color: var(--muted); padding: 24px; }
+  .toolbar { display: flex; gap: 8px; margin-top: 30px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📚 منظّم الفريق</h1>
+  <p>نظّم مواعيد المقابلات ومشروعات فريقك في مكان واحد</p>
+  <nav>
+    <button class="active" data-tab="dashboard">الرئيسية</button>
+    <button data-tab="meetings">المقابلات</button>
+    <button data-tab="projects">المشروعات</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- الرئيسية -->
+  <section id="dashboard" class="active">
+    <div class="stats">
+      <div class="stat"><div class="num" id="statMeetings">0</div><div class="label">مقابلات قادمة</div></div>
+      <div class="stat"><div class="num" id="statProjects">0</div><div class="label">مشروعات شغّالة</div></div>
+      <div class="stat"><div class="num" id="statTasks">0</div><div class="label">مهام متبقية</div></div>
+    </div>
+    <div class="card">
+      <h3>⏰ أقرب مقابلة</h3>
+      <div id="nextMeeting"></div>
+    </div>
+    <div class="card">
+      <h3>🎯 أقرب مشروع من حيث الموعد النهائي</h3>
+      <div id="nextProject"></div>
+    </div>
+    <div class="toolbar">
+      <button class="btn ghost" id="exportBtn">⬇️ تصدير البيانات</button>
+      <button class="btn ghost" id="importBtn">⬆️ استيراد البيانات</button>
+      <input type="file" id="importFile" accept=".json" hidden>
+    </div>
+  </section>
+
+  <!-- المقابلات -->
+  <section id="meetings">
+    <div class="card">
+      <h2>إضافة مقابلة جديدة</h2>
+      <form id="meetingForm">
+        <div class="full"><label>عنوان المقابلة</label><input name="title" required placeholder="مثال: اجتماع مناقشة المشروع"></div>
+        <div><label>التاريخ</label><input type="date" name="date" required></div>
+        <div><label>الوقت</label><input type="time" name="time" required></div>
+        <div><label>المكان أو الرابط</label><input name="place" placeholder="الكلية / Zoom / Google Meet"></div>
+        <div class="full"><label>ملاحظات</label><textarea name="notes" placeholder="جدول الأعمال أو أي تفاصيل"></textarea></div>
+        <div class="full"><button class="btn" type="submit">➕ أضف المقابلة</button></div>
+      </form>
+    </div>
+    <div id="meetingList"></div>
+  </section>
+
+  <!-- المشروعات -->
+  <section id="projects">
+    <div class="card">
+      <h2>إضافة مشروع جديد</h2>
+      <form id="projectForm">
+        <div class="full"><label>اسم المشروع</label><input name="name" required placeholder="مثال: مشروع تخرج - تطبيق ويب"></div>
+        <div><label>الموعد النهائي</label><input type="date" name="deadline"></div>
+        <div><label>أعضاء الفريق</label><input name="members" placeholder="أحمد، ، محمد"></div>
+        <div class="full"><label>الوصف</label><textarea name="description"></textarea></div>
+        <div class="full"><button class="btn" type="submit">➕ أضف المشروع</button></div>
+      </form>
+    </div>
+    <div id="projectList"></div>
+  </section>
+
+</main>
+
+<script>
+  const STORAGE_KEY = "team-organizer-v1";
+  let data = { meetings: [], projects: [] };
+
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) data = JSON.parse(saved);
+  } catch (e) { /* ignore */ }
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+
+  function fmtDate(d) {
+    if (!d) return "بدون موعد";
+    return new Date(d + "T00:00:00").toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  }
+  function fmtTime(t) {
+    if (!t) return "";
+    const [h, m] = t.split(":");
+    return new Date(2000, 0, 1, h, m).toLocaleTimeString("ar-EG", { hour: "numeric", minute: "2-digit" });
+  }
+  function dateBadge(d) {
+    if (!d) return "";
+    const t = todayStr();
+    if (d === t) return '<span class="badge today">النهارده</span>';
+    if (d < t) return '<span class="badge past">فات</span>';
+    return "";
+  }
+
+  /* ---------- Tabs ---------- */
+  document.querySelectorAll("nav button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  /* ---------- Meetings ---------- */
+  document.getElementById("meetingForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    data.meetings.push({
+      id: uid(),
+      title: f.get("title").trim(),
+      date: f.get("date"),
+      time: f.get("time"),
+      place: f.get("place").trim(),
+      notes: f.get("notes").trim(),
+      done: false
+    });
+    e.target.reset();
+    save(); render();
+  });
+
+  function renderMeetings() {
+    const list = document.getElementById("meetingList");
+    if (!data.meetings.length) {
+      list.innerHTML = '<div class="card empty">لسه مفيش مقابلات. أضف أول مقابلة من الفورم فوق 👆</div>';
+      return;
+    }
+    const sorted = [...data.meetings].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    list.innerHTML = sorted.map(m => `
+      <div class="card item ${m.done ? "done" : ""}">
+        <div>
+          <div class="title">${esc(m.title)} ${dateBadge(m.date)}</div>
+          <div class="meta">📅 ${fmtDate(m.date)} — 🕒 ${fmtTime(m.time)}</div>
+          ${m.place ? `<div class="meta">📍 ${esc(m.place)}</div>` : ""}
+          ${m.notes ? `<div class="meta">📝 ${esc(m.notes)}</div>` : ""}
+        </div>
+        <div class="actions">
+          <button class="btn small ghost" onclick="toggleMeeting('${m.id}')">${m.done ? "↩️ إرجاع" : "✔️ تمت"}</button>
+          <button class="btn small danger" onclick="deleteMeeting('${m.id}')">🗑️</button>
+        </div>
+      </div>`).join("");
+  }
+  function toggleMeeting(id) {
+    const m = data.meetings.find(x => x.id === id);
+    if (m) m.done = !m.done;
+    save(); render();
+  }
+  function deleteMeeting(id) {
+    if (!confirm("متأكد إنك عايز تمسح المقابلة؟")) return;
+    data.meetings = data.meetings.filter(x => x.id !== id);
+    save(); render();
+  }
+
+  /* ---------- Projects ---------- */
+  document.getElementById("projectForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    data.projects.push({
+      id: uid(),
+      name: f.get("name").trim(),
+      deadline: f.get("deadline"),
+      members: f.get("members").trim(),
+      description: f.get("description").trim(),
+      tasks: []
+    });
+    e.target.reset();
+    save(); render();
+  });
+
+  function progressOf(p) {
+    if (!p.tasks.length) return 0;
+    return Math.round(p.tasks.filter(t => t.done).length / p.tasks.length * 100);
+  }
+
+  function renderProjects() {
+    const list = document.getElementById("projectList");
+    if (!data.projects.length) {
+      list.innerHTML = '<div class="card empty">لسه مفيش مشروعات. أضف أول مشروع من الفورم فوق 👆</div>';
+      return;
+    }
+    list.innerHTML = data.projects.map(p => {
+      const pr = progressOf(p);
+      return `
+      <div class="card">
+        <div class="item">
+          <div>
+            <div class="title">${esc(p.name)}
+              ${pr === 100 ? '<span class="badge status-done">مكتمل</span>' : ""}
+              ${dateBadge(p.deadline)}
+            </div>
+            <div class="meta">🎯 الموعد النهائي: ${fmtDate(p.deadline)}</div>
+            ${p.members ? `<div class="meta">👥 ${esc(p.members)}</div>` : ""}
+            ${p.description ? `<div class="meta">${esc(p.description)}</div>` : ""}
+          </div>
+          <div class="actions">
+            <button class="btn small danger" onclick="deleteProject('${p.id}')">🗑️ حذف المشروع</button>
+          </div>
+        </div>
+        <div class="progress"><div style="width:${pr}%"></div></div>
+        <div class="meta">${pr}% مكتمل (${p.tasks.filter(t => t.done).length} من ${p.tasks.length} مهام)</div>
+        <div class="tasks">
+          ${p.tasks.map(t => `
+            <div class="task ${t.done ? "done" : ""}">
+              <input type="checkbox" ${t.done ? "checked" : ""} onchange="toggleTask('${p.id}','${t.id}')">
+              <span>${esc(t.text)}</span>
+              <button class="x" onclick="deleteTask('${p.id}','${t.id}')" title="مسح">✕</button>
+            </div>`).join("")}
+          <form class="task-form" onsubmit="addTask(event,'${p.id}')">
+            <input name="text" placeholder="أضف مهمة جديدة..." required>
+            <button class="btn small" type="submit">إضافة</button>
+          </form>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  function addTask(e, pid) {
+    e.preventDefault();
+    const text = new FormData(e.target).get("text").trim();
+    const p = data.projects.find(x => x.id === pid);
+    if (p && text) p.tasks.push({ id: uid(), text, done: false });
+    save(); render();
+  }
+  function toggleTask(pid, tid) {
+    const t = data.projects.find(x => x.id === pid)?.tasks.find(x => x.id === tid);
+    if (t) t.done = !t.done;
+    save(); render();
+  }
+  function deleteTask(pid, tid) {
+    const p = data.projects.find(x => x.id === pid);
+    if (p) p.tasks = p.tasks.filter(x => x.id !== tid);
+    save(); render();
+  }
+  function deleteProject(id) {
+    if (!confirm("متأكد إنك عايز تمسح المشروع بكل مهامه؟")) return;
+    data.projects = data.projects.filter(x => x.id !== id);
+    save(); render();
+  }
+
+  /* ---------- Dashboard ---------- */
+  function renderDashboard() {
+    const t = todayStr();
+    const upcoming = data.meetings.filter(m => !m.done && m.date >= t)
+      .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    const activeProjects = data.projects.filter(p => progressOf(p) < 100);
+    const remaining = data.projects.reduce((n, p) => n + p.tasks.filter(x => !x.done).length, 0);
+
+    document.getElementById("statMeetings").textContent = upcoming.length;
+    document.getElementById("statProjects").textContent = activeProjects.length;
+    document.getElementById("statTasks").textContent = remaining;
+
+    const nm = upcoming[0];
+    document.getElementById("nextMeeting").innerHTML = nm
+      ? `<div class="title">${esc(nm.title)} ${dateBadge(nm.date)}</div>
+         <div class="meta">📅 ${fmtDate(nm.date)} — 🕒 ${fmtTime(nm.time)}</div>
+         ${nm.place ? `<div class="meta">📍 ${esc(nm.place)}</div>` : ""}`
+      : '<div class="empty">مفيش مقابلات قادمة</div>';
+
+    const np = activeProjects.filter(p => p.deadline).sort((a, b) => a.deadline.localeCompare(b.deadline))[0];
+    document.getElementById("nextProject").innerHTML = np
+      ? `<div class="title">${esc(np.name)} ${dateBadge(np.deadline)}</div>
+         <div class="meta">🎯 ${fmtDate(np.deadline)}</div>
+         <div class="progress"><div style="width:${progressOf(np)}%"></div></div>
+         <div class="meta">${progressOf(np)}% مكتمل</div>`
+      : '<div class="empty">مفيش مشروعات بموعد نهائي</div>';
+  }
+
+  /* ---------- Export / Import ---------- */
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "team-data.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+  document.getElementById("importFile").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (Array.isArray(parsed.meetings) && Array.isArray(parsed.projects)) {
+          data = parsed; save(); render();
+          alert("تم استيراد البيانات ✅");
+        } else alert("الملف مش بالشكل المطلوب");
+      } catch { alert("الملف مش صالح"); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  function render() { renderDashboard(); renderMeetings(); renderProjects(); }
+  render();
+</script>
+</body>
+</html>
